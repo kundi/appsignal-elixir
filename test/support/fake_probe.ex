@@ -13,4 +13,19 @@ defmodule FakeProbe do
       raise :nosup
     end
   end
+
+  def clear do
+    if alive?() do
+      update(__MODULE__, :probe_called, false)
+    end
+  end
+
+  def stateful(state) do
+    if alive?() do
+      update(__MODULE__, :probe_called, true)
+      update(__MODULE__, :probe_state, state)
+    end
+
+    state + 1
+  end
 end

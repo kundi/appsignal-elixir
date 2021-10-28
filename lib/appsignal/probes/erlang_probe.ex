@@ -3,13 +3,14 @@ defmodule Appsignal.Probes.ErlangProbe do
   @appsignal Application.get_env(:appsignal, :appsignal, Appsignal)
   @inet Application.get_env(:appsignal, :inet, :inet)
 
-  def call do
+  def call(sample \\ nil) do
     io_metrics()
     scheduler_metrics()
     process_metrics()
     memory_metrics()
     atom_metrics()
     run_queue_lengths()
+    scheduler_utilization_metrics(sample)
   end
 
   defp io_metrics do
@@ -68,6 +69,28 @@ defmodule Appsignal.Probes.ErlangProbe do
     set_gauge("total_run_queue_lengths", total, %{type: "total"})
     set_gauge("total_run_queue_lengths", cpu, %{type: "cpu"})
     set_gauge("total_run_queue_lengths", total - cpu, %{type: "io"})
+  end
+
+  defp scheduler_utilization_metrics(sample) do
+    unless is_nil(sample) do
+      utilization = :scheduler.utilization(sample)
+
+      utilization
+      |> Enum.map(&Tuple.to_list/1)
+      |> Enum.filter(fn [type | _] -> type == :normal end)
+      |> Enum.each(fn [_, id, value, _] ->
+        set_gauge("erlang_scheduler_utilization", value * 100, %{type: "scheduler", id: "#{id}"})
+      end)
+
+      utilization
+      |> Enum.map(&Tuple.to_list/1)
+      |> Enum.filter(fn [type | _] -> type == :total end)
+      |> Enum.each(fn [_, value, _] ->
+        set_gauge("erlang_scheduler_utilization", value * 100, %{type: "total"})
+      end)
+    end
+
+    :scheduler.sample()
   end
 
   defp set_gauge(name, value, tags) do
