@@ -1,11 +1,15 @@
 {_, _} = Code.eval_file("agent.exs")
+required_utils = Code.require_file("lib/appsignal/utils.ex")
 
 defmodule Mix.Appsignal.Helper do
   @moduledoc """
   Helper functions for downloading and compiling the AppSignal agent library.
   """
-  @os Application.get_env(:appsignal, :os, :os)
-  @system Application.get_env(:appsignal, :mix_system, System)
+
+  require Appsignal.Utils
+
+  @os Appsignal.Utils.compile_env(:appsignal, :os, :os)
+  @system Appsignal.Utils.compile_env(:appsignal, :mix_system, System)
 
   @proxy_env_vars [
     "APPSIGNAL_HTTP_PROXY",
@@ -746,4 +750,8 @@ defmodule Mix.Appsignal.Helper do
 
   defp serialize_report_value(value) when is_binary(value), do: value
   defp serialize_report_value(value), do: inspect(value)
+end
+
+with [{Appsignal.Utils = module, _}] <- required_utils do
+  :code.delete(module)
 end
